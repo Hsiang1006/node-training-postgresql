@@ -1,7 +1,8 @@
 const { IsNull } = require('typeorm')
 const { dataSource } = require('../db/data-source')
 const logger = require('../utils/logger')('CoursesController')
-
+const appError = require('../utils/appError');
+// 取得課程列表
 async function getAllCourses (req, res, next) {
   try {
     const courses = await dataSource.getRepository('Course').find({
@@ -44,7 +45,7 @@ async function getAllCourses (req, res, next) {
     next(error)
   }
 }
-
+// 報名課程
 async function postCourseBooking (req, res, next) {
   try {
     const { id } = req.user
@@ -56,11 +57,7 @@ async function postCourseBooking (req, res, next) {
       }
     })
     if (!course) {
-      res.status(400).json({
-        status: 'failed',
-        message: 'ID錯誤'
-      })
-      return
+      return next(appError(400, 'failed', 'ID錯誤', next))
     }
     const creditPurchaseRepo = dataSource.getRepository('CreditPurchase')
     const courseBookingRepo = dataSource.getRepository('CourseBooking')
@@ -71,11 +68,7 @@ async function postCourseBooking (req, res, next) {
       }
     })
     if (userCourseBooking) {
-      res.status(400).json({
-        status: 'failed',
-        message: '已經報名過此課程'
-      })
-      return
+      return next(appError(400, 'failed', '已經報名過此課程', next))
     }
     const userCredit = await creditPurchaseRepo.sum('purchased_credits', {
       user_id: id
@@ -93,17 +86,9 @@ async function postCourseBooking (req, res, next) {
       }
     })
     if (userUsedCredit >= userCredit) {
-      res.status(400).json({
-        status: 'failed',
-        message: '已無可使用堂數'
-      })
-      return
+      return next(appError(400, 'failed', '已無可使用堂數', next))
     } else if (courseBookingCount >= course.max_participants) {
-      res.status(400).json({
-        status: 'failed',
-        message: '已達最大參加人數，無法參加'
-      })
-      return
+      return next(appError(400, 'failed', '已達最大參加人數，無法參加', next));
     }
     const newCourseBooking = await courseBookingRepo.create({
       user_id: id,
@@ -119,7 +104,7 @@ async function postCourseBooking (req, res, next) {
     next(error)
   }
 }
-
+// 取消課程
 async function deleteCourseBooking (req, res, next) {
   try {
     const { id } = req.user
@@ -133,11 +118,7 @@ async function deleteCourseBooking (req, res, next) {
       }
     })
     if (!userCourseBooking) {
-      res.status(400).json({
-        status: 'failed',
-        message: 'ID錯誤'
-      })
-      return
+      return next(appError(400, 'failed', 'ID錯誤', next))
     }
     const updateResult = await courseBookingRepo.update(
       {
@@ -150,11 +131,7 @@ async function deleteCourseBooking (req, res, next) {
       }
     )
     if (updateResult.affected === 0) {
-      res.status(400).json({
-        status: 'failed',
-        message: '取消失敗'
-      })
-      return
+      return next(appError(400, 'failed', '取消失敗', next));
     }
     res.status(200).json({
       status: 'success',

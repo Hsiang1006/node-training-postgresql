@@ -6,35 +6,22 @@ const config = require('../config/index')
 const { dataSource } = require('../db/data-source')
 const logger = require('../utils/logger')('UsersController')
 const generateJWT = require('../utils/generateJWT')
+const appError = require('../utils/appError')
+const validCheck = require('../utils/validCheck')
 
 const passwordPattern = /(?=.*\d)(?=.*[a-z])(?=.*[A-Z]).{8,16}/
 
-function isUndefined (value) {
-  return value === undefined
-}
-
-function isNotValidSting (value) {
-  return typeof value !== 'string' || value.trim().length === 0 || value === ''
-}
-
+// 使用者註冊
 async function postSignup (req, res, next) {
   try {
     const { name, email, password } = req.body
-    if (isUndefined(name) || isNotValidSting(name) || isUndefined(email) || isNotValidSting(email) || isUndefined(password) || isNotValidSting(password)) {
+    if (validCheck.isUndefined(name) || validCheck.isNotValidSting(name) || validCheck.isUndefined(email) || validCheck.isNotValidSting(email) || validCheck.isUndefined(password) || validCheck.isNotValidSting(password)) {
       logger.warn('欄位未填寫正確')
-      res.status(400).json({
-        status: 'failed',
-        message: '欄位未填寫正確'
-      })
-      return
+      return next(appError(400, 'failed', '欄位未填寫正確', next))
     }
     if (!passwordPattern.test(password)) {
       logger.warn('建立使用者錯誤: 密碼不符合規則，需要包含英文數字大小寫，最短8個字，最長16個字')
-      res.status(400).json({
-        status: 'failed',
-        message: '密碼不符合規則，需要包含英文數字大小寫，最短8個字，最長16個字'
-      })
-      return
+      return next(appError(400, 'failed', '密碼不符合規則，需要包含英文數字大小寫，最短8個字，最長16個字', next))
     }
     const userRepository = dataSource.getRepository('User')
     const existingUser = await userRepository.findOne({
@@ -43,11 +30,7 @@ async function postSignup (req, res, next) {
 
     if (existingUser) {
       logger.warn('建立使用者錯誤: Email 已被使用')
-      res.status(409).json({
-        status: 'failed',
-        message: 'Email 已被使用'
-      })
-      return
+      return next(appError(409, 'failed', 'Email 已被使用', next))
     }
     const salt = await bcrypt.genSalt(10)
     const hashPassword = await bcrypt.hash(password, salt)
@@ -73,25 +56,17 @@ async function postSignup (req, res, next) {
     next(error)
   }
 }
-
+// 使用者登入
 async function postLogin (req, res, next) {
   try {
     const { email, password } = req.body
-    if (isUndefined(email) || isNotValidSting(email) || isUndefined(password) || isNotValidSting(password)) {
+    if (validCheck.isUndefined(email) || validCheck.isNotValidSting(email) || validCheck.isUndefined(password) || validCheck.isNotValidSting(password)) {
       logger.warn('欄位未填寫正確')
-      res.status(400).json({
-        status: 'failed',
-        message: '欄位未填寫正確'
-      })
-      return
+      return next(appError(400, 'failed', '欄位未填寫正確', next))
     }
     if (!passwordPattern.test(password)) {
       logger.warn('密碼不符合規則，需要包含英文數字大小寫，最短8個字，最長16個字')
-      res.status(400).json({
-        status: 'failed',
-        message: '密碼不符合規則，需要包含英文數字大小寫，最短8個字，最長16個字'
-      })
-      return
+      return next(appError(400, 'failed', '密碼不符合規則，需要包含英文數字大小寫，最短8個字，最長16個字', next))
     }
     const userRepository = dataSource.getRepository('User')
     const existingUser = await userRepository.findOne({
@@ -100,20 +75,12 @@ async function postLogin (req, res, next) {
     })
 
     if (!existingUser) {
-      res.status(400).json({
-        status: 'failed',
-        message: '使用者不存在或密碼輸入錯誤'
-      })
-      return
+      return next(appError(400, 'failed', '使用者不存在或密碼輸入錯誤', next))
     }
     logger.info(`使用者資料: ${JSON.stringify(existingUser)}`)
     const isMatch = await bcrypt.compare(password, existingUser.password)
     if (!isMatch) {
-      res.status(400).json({
-        status: 'failed',
-        message: '使用者不存在或密碼輸入錯誤'
-      })
-      return
+      return next(appError(400, 'failed', '使用者不存在或密碼輸入錯誤', next))
     }
     const token = await generateJWT({
       id: existingUser.id,
@@ -136,7 +103,7 @@ async function postLogin (req, res, next) {
     next(error)
   }
 }
-
+// 取得個人資料
 async function getProfile (req, res, next) {
   try {
     const { id } = req.user
@@ -156,7 +123,7 @@ async function getProfile (req, res, next) {
     next(error)
   }
 }
-
+// 取得使用者已購買的方案列表
 async function getCreditPackage (req, res, next) {
   try {
     const { id } = req.user
@@ -193,18 +160,14 @@ async function getCreditPackage (req, res, next) {
     next(error)
   }
 }
-
+// 更新個人資料
 async function putProfile (req, res, next) {
   try {
     const { id } = req.user
     const { name } = req.body
-    if (isUndefined(name) || isNotValidSting(name)) {
+    if (validCheck.isUndefined(name) || validCheck.isNotValidSting(name)) {
       logger.warn('欄位未填寫正確')
-      res.status(400).json({
-        status: 'failed',
-        message: '欄位未填寫正確'
-      })
-      return
+      return next(appError(400, 'failed', '欄位未填寫正確', next))
     }
     const userRepository = dataSource.getRepository('User')
     const user = await userRepository.findOne({
@@ -214,11 +177,7 @@ async function putProfile (req, res, next) {
       }
     })
     if (user.name === name) {
-      res.status(400).json({
-        status: 'failed',
-        message: '使用者名稱未變更'
-      })
-      return
+      return next(appError(400, 'failed', '使用者名稱未變更', next))
     }
     const updatedResult = await userRepository.update({
       id,
@@ -227,11 +186,7 @@ async function putProfile (req, res, next) {
       name
     })
     if (updatedResult.affected === 0) {
-      res.status(400).json({
-        status: 'failed',
-        message: '更新使用者資料失敗'
-      })
-      return
+      return next(appError(400, 'failed', '更新使用者資料失敗', next))
     }
     const result = await userRepository.findOne({
       select: ['name'],
@@ -250,44 +205,28 @@ async function putProfile (req, res, next) {
     next(error)
   }
 }
-
+// 使用者更新密碼
 async function putPassword (req, res, next) {
   try {
     const { id } = req.user
     const { password, new_password: newPassword, confirm_new_password: confirmNewPassword } = req.body
-    if (isUndefined(password) || isNotValidSting(password) ||
-    isUndefined(newPassword) || isNotValidSting(newPassword) ||
-    isUndefined(confirmNewPassword) || isNotValidSting(confirmNewPassword)) {
+    if (validCheck.isUndefined(password) || validCheck.isNotValidSting(password) ||
+    validCheck.isUndefined(newPassword) || validCheck.isNotValidSting(newPassword) ||
+    validCheck.isUndefined(confirmNewPassword) || validCheck.isNotValidSting(confirmNewPassword)) {
       logger.warn('欄位未填寫正確')
-      res.status(400).json({
-        status: 'failed',
-        message: '欄位未填寫正確'
-      })
-      return
+      return next(appError(400, 'failed', '欄位未填寫正確', next))
     }
     if (!passwordPattern.test(password) || !passwordPattern.test(newPassword) || !passwordPattern.test(confirmNewPassword)) {
       logger.warn('密碼不符合規則，需要包含英文數字大小寫，最短8個字，最長16個字')
-      res.status(400).json({
-        status: 'failed',
-        message: '密碼不符合規則，需要包含英文數字大小寫，最短8個字，最長16個字'
-      })
-      return
+      return next(appError(400, 'failed', '密碼不符合規則，需要包含英文數字大小寫，最短8個字，最長16個字', next))
     }
     if (newPassword === password) {
       logger.warn('新密碼不能與舊密碼相同')
-      res.status(400).json({
-        status: 'failed',
-        message: '新密碼不能與舊密碼相同'
-      })
-      return
+      return next(appError(400, 'failed', '新密碼不能與舊密碼相同', next))
     }
     if (newPassword !== confirmNewPassword) {
       logger.warn('新密碼與驗證新密碼不一致')
-      res.status(400).json({
-        status: 'failed',
-        message: '新密碼與驗證新密碼不一致'
-      })
-      return
+      return next(appError(400, 'failed', '新密碼與驗證新密碼不一致', next))
     }
     const userRepository = dataSource.getRepository('User')
     const existingUser = await userRepository.findOne({
@@ -296,11 +235,7 @@ async function putPassword (req, res, next) {
     })
     const isMatch = await bcrypt.compare(password, existingUser.password)
     if (!isMatch) {
-      res.status(400).json({
-        status: 'failed',
-        message: '密碼輸入錯誤'
-      })
-      return
+      return next(appError(400, 'failed', '密碼輸入錯誤', next))
     }
     const salt = await bcrypt.genSalt(10)
     const hashPassword = await bcrypt.hash(newPassword, salt)
@@ -310,11 +245,7 @@ async function putPassword (req, res, next) {
       password: hashPassword
     })
     if (updatedResult.affected === 0) {
-      res.status(400).json({
-        status: 'failed',
-        message: '更新密碼失敗'
-      })
-      return
+      return next(appError(400, 'failed', '更新密碼失敗', next))
     }
     res.status(200).json({
       status: 'success',
@@ -325,7 +256,7 @@ async function putPassword (req, res, next) {
     next(error)
   }
 }
-
+// 取得已預約的課程列表
 async function getCourseBooking (req, res, next) {
   try {
     const { id } = req.user

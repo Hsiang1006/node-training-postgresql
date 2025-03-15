@@ -11,11 +11,23 @@ module.exports = new EntitySchema({
     },
     user_id: {
       type: 'uuid',
-      nullable: false
+      nullable: false,
+      foreignKey: {
+        name: 'course_user_id_fkey',
+        columnNames: ['user_id'],
+        referencedTableName: 'USER',
+        referencedColumnNames: ['id']
+      }
     },
     skill_id: {
       type: 'uuid',
-      nullable: false
+      nullable: false,
+      foreignKey: {
+        name: 'course_skill_id_fkey',
+        columnNames: ['skill_id'],
+        referencedTableName: 'SKILL',
+        referencedColumnNames: ['id']
+      }
     },
     name: {
       type: 'varchar',

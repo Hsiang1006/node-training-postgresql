@@ -15,7 +15,7 @@ const ALLOWED_FILE_TYPES = {
   'image/png': true
 }
 const bucket = firebaseAdmin.storage().bucket()
-
+// 上傳圖片
 async function postUploadImage (req, res, next) {
   try {
     const form = formidable.formidable({

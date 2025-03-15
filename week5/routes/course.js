@@ -9,11 +9,11 @@ const auth = require('../middlewares/auth')({
   userRepository: dataSource.getRepository('User'),
   logger
 })
-
+// 取得課程列表
 router.get('/', courses.getAllCourses)
-
+// 報名課程
 router.post('/:courseId', auth, courses.postCourseBooking)
-
+// 取消課程
 router.delete('/:courseId', auth, courses.deleteCourseBooking)
 
 module.exports = router

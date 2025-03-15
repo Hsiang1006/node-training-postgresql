@@ -11,7 +11,7 @@ const auth = require('../middlewares/auth')({
 })
 
 const router = express.Router()
-
+// 上傳圖片
 router.post('/', auth, upload.postUploadImage)
 
 module.exports = router

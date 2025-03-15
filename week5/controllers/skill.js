@@ -1,15 +1,10 @@
 
 const { dataSource } = require('../db/data-source')
 const logger = require('../utils/logger')('SkillController')
+const appError = require('../utils/appError');
+const validCheck = require('../utils/validCheck');
 
-function isUndefined (value) {
-  return value === undefined
-}
-
-function isNotValidSting (value) {
-  return typeof value !== 'string' || value.trim().length === 0 || value === ''
-}
-
+// 取得教練專長列表
 async function getAll (req, res, next) {
   try {
     const skills = await dataSource.getRepository('Skill').find({
@@ -24,16 +19,12 @@ async function getAll (req, res, next) {
     next(error)
   }
 }
-
+// 新增教練專長
 async function post (req, res, next) {
   try {
     const { name } = req.body
-    if (isUndefined(name) || isNotValidSting(name)) {
-      res.status(400).json({
-        status: 'failed',
-        message: '欄位未填寫正確'
-      })
-      return
+    if (validCheck.isUndefined(name) || validCheck.isNotValidSting(name)) {
+      return next(appError(400, 'failed', '欄位未填寫正確', next))
     }
     const skillRepo = dataSource.getRepository('Skill')
     const existSkill = await skillRepo.findOne({
@@ -42,11 +33,7 @@ async function post (req, res, next) {
       }
     })
     if (existSkill) {
-      res.status(409).json({
-        status: 'failed',
-        message: '資料重複'
-      })
-      return
+      return next(appError(409, 'failed', '資料重複', next))
     }
     const newSkill = await skillRepo.create({
       name
@@ -61,24 +48,16 @@ async function post (req, res, next) {
     next(error)
   }
 }
-
+// 刪除教練專長
 async function deletePackage (req, res, next) {
   try {
     const { skillId } = req.params
-    if (isUndefined(skillId) || isNotValidSting(skillId)) {
-      res.status(400).json({
-        status: 'failed',
-        message: 'ID錯誤'
-      })
-      return
+    if (validCheck.isUndefined(skillId) || validCheck.isNotValidSting(skillId)) {
+      return next(appError(400, 'failed', 'ID錯誤', next))
     }
     const result = await dataSource.getRepository('Skill').delete(skillId)
     if (result.affected === 0) {
-      res.status(400).json({
-        status: 'failed',
-        message: 'ID錯誤'
-      })
-      return
+      return next(appError(400, 'failed', 'ID錯誤', next))
     }
     res.status(200).json({
       status: 'success'

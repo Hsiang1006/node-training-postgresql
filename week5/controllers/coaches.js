@@ -1,55 +1,42 @@
 const { dataSource } = require('../db/data-source')
 const logger = require('../utils/logger')('CoachesController')
+const appError = require('../utils/appError')
+const validCheck = require('../utils/validCheck')
 
-function isUndefined (value) {
-  return value === undefined
-}
-
-function isNotValidSting (value) {
-  return typeof value !== 'string' || value.trim().length === 0 || value === ''
-}
-
+// 取得教練列表
 async function getCoaches (req, res, next) {
   try {
-    const coaches = await dataSource.getRepository('Coach').find({
-      select: {
-        id: true,
-        experience_years: true,
-        description: true,
-        profile_image_url: true,
-        User: {
-          name: true
+    const { per, page } = req.query
+    if(validCheck.isUndefined(per) || validCheck.isNotValidSting(per) || validCheck.isUndefined(page) || validCheck.isNotValidSting(page)){
+        logger.warn('欄位未填寫正確')
+        return next(appError(400, 'failed', '欄位未填寫正確', next))
+    }
+
+    const perNum = parseInt(per)
+    const pageNum = parseInt(page)
+    const newCoach = await dataSource.getRepository("Coach").find({
+        skip: (perNum * (pageNum - 1)),
+        take: perNum,
+        relations: {
+            User: true
         }
-      },
-      relations: {
-        User: true
-      }
     })
+
     res.status(200).json({
-      status: 'success',
-      data: coaches.map(coach => ({
-        id: coach.id,
-        name: coach.User.name,
-        experience_years: coach.experience_years,
-        description: coach.description,
-        profile_image_url: coach.profile_image_url
-      }))
+        status: "success",
+        data: newCoach
     })
-  } catch (error) {
+  }catch (error) {
     logger.error(error)
     next(error)
   }
 }
-
+// 取得教練詳細資訊
 async function getCoachDetail (req, res, next) {
   try {
     const { coachId } = req.params
-    if (isUndefined(coachId) || isNotValidSting(coachId)) {
-      res.status(400).json({
-        status: 'failed',
-        message: '欄位未填寫正確'
-      })
-      return
+    if (validCheck.isUndefined(coachId) || validCheck.isNotValidSting(coachId)) {
+      return next(appError(400, 'failed', '欄位未填寫正確', next))
     }
     const coach = await dataSource.getRepository('Coach').findOne({
       select: {
@@ -74,11 +61,7 @@ async function getCoachDetail (req, res, next) {
     })
     if (!coach) {
       logger.warn('找不到該教練')
-      res.status(400).json({
-        status: 'failed',
-        message: '找不到該教練'
-      })
-      return
+      return next(appError(400, 'failed', '找不到該教練', next))
     }
     res.status(200).json({
       status: 'success',
@@ -100,16 +83,12 @@ async function getCoachDetail (req, res, next) {
     next(error)
   }
 }
-
+// 取得指定教練課程列表
 async function getCoachCourses (req, res, next) {
   try {
     const { coachId } = req.params
-    if (isUndefined(coachId) || isNotValidSting(coachId)) {
-      res.status(400).json({
-        status: 'failed',
-        message: '欄位未填寫正確'
-      })
-      return
+    if (validCheck.isUndefined(coachId) || validCheck.isNotValidSting(coachId)) {
+      return next(appError(400, 'failed', '欄位未填寫正確', next))
     }
     const coach = await dataSource.getRepository('Coach').findOne({
       select: {
@@ -128,11 +107,7 @@ async function getCoachCourses (req, res, next) {
     })
     if (!coach) {
       logger.warn('找不到該教練')
-      res.status(400).json({
-        status: 'failed',
-        message: '找不到該教練'
-      })
-      return
+      return next(appError(400, 'failed', '找不到該教練', next))
     }
     logger.info(`coach: ${JSON.stringify(coach)}`)
     const courses = await dataSource.getRepository('Course').find({

@@ -1,19 +1,10 @@
 
 const { dataSource } = require('../db/data-source')
 const logger = require('../utils/logger')('CreditPackageController')
+const appError = require('../utils/appError');
+const validCheck = require('../utils/validCheck');
 
-function isUndefined (value) {
-  return value === undefined
-}
-
-function isNotValidSting (value) {
-  return typeof value !== 'string' || value.trim().length === 0 || value === ''
-}
-
-function isNotValidInteger (value) {
-  return typeof value !== 'number' || value < 0 || value % 1 !== 0
-}
-
+// 取得購買方案列表
 async function getAll (req, res, next) {
   try {
     const creditPackages = await dataSource.getRepository('CreditPackage').find({
@@ -28,18 +19,14 @@ async function getAll (req, res, next) {
     next(error)
   }
 }
-
+// 新增購買方案只接受
 async function post (req, res, next) {
   try {
     const { name, credit_amount: creditAmount, price } = req.body
-    if (isUndefined(name) || isNotValidSting(name) ||
-      isUndefined(creditAmount) || isNotValidInteger(creditAmount) ||
-      isUndefined(price) || isNotValidInteger(price)) {
-      res.status(400).json({
-        status: 'failed',
-        message: '欄位未填寫正確'
-      })
-      return
+    if (validCheck.isUndefined(name) || validCheck.isNotValidSting(name) ||
+    validCheck.isUndefined(creditAmount) || validCheck.isNotValidInteger(creditAmount) ||
+    validCheck.isUndefined(price) || validCheck.isNotValidInteger(price)) {
+      return next(appError(400, 'failed', '欄位未填寫正確', next))
     }
     const creditPackageRepo = dataSource.getRepository('CreditPackage')
     const existCreditPackage = await creditPackageRepo.findOne({
@@ -48,11 +35,7 @@ async function post (req, res, next) {
       }
     })
     if (existCreditPackage) {
-      res.status(409).json({
-        status: 'failed',
-        message: '資料重複'
-      })
-      return
+      return next(appError(409, 'failed', '資料重複', next))
     }
     const newCreditPackage = await creditPackageRepo.create({
       name,
@@ -69,7 +52,7 @@ async function post (req, res, next) {
     next(error)
   }
 }
-
+// 使用者購買方案
 async function postUserBuy (req, res, next) {
   try {
     const { id } = req.user
@@ -81,11 +64,7 @@ async function postUserBuy (req, res, next) {
       }
     })
     if (!creditPackage) {
-      res.status(400).json({
-        status: 'failed',
-        message: 'ID錯誤'
-      })
-      return
+      return next(appError(400, 'failed', 'ID錯誤', next))
     }
     const creditPurchaseRepo = dataSource.getRepository('CreditPurchase')
     const newPurchase = await creditPurchaseRepo.create({
@@ -105,24 +84,16 @@ async function postUserBuy (req, res, next) {
     next(error)
   }
 }
-
+// 刪除購買方案
 async function deletePackage (req, res, next) {
   try {
     const { creditPackageId } = req.params
-    if (isUndefined(creditPackageId) || isNotValidSting(creditPackageId)) {
-      res.status(400).json({
-        status: 'failed',
-        message: '欄位未填寫正確'
-      })
-      return
+    if (validCheck.isUndefined(creditPackageId) || validCheck.isNotValidSting(creditPackageId)) {
+      return next(appError(400, 'failed', '欄位未填寫正確', next))
     }
     const result = await dataSource.getRepository('CreditPackage').delete(creditPackageId)
     if (result.affected === 0) {
-      res.status(400).json({
-        status: 'failed',
-        message: 'ID錯誤'
-      })
-      return
+      return next(appError(400, 'failed', 'ID錯誤', next))
     }
     res.status(200).json({
       status: 'success',
